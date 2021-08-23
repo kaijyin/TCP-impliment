@@ -28,10 +28,25 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
  
-    //解方程(ck+isn+x)%(1<<32)=n; y=ck+isn+x;
     //坑点,如果求得checkpoint就是最近的怎么办
-    uint64_t a=(static_cast<uint64_t>(isn.raw_value())+checkpoint)%max_int;
-    uint64_t x=(static_cast<uint64_t>(n.raw_value())+max_int-a)%max_int;
-    //可以取
-    return static_cast<uint64_t>(isn.raw_value())+checkpoint+x;
+    uint64_t mid = (max_int - static_cast<uint64_t>(isn.raw_value()) + static_cast<uint64_t>(n.raw_value())) % max_int;
+    mid += (checkpoint / max_int) * max_int;
+    uint64_t right = mid + max_int;
+    uint64_t left = mid - max_int;
+    if (mid > checkpoint) {
+        if (mid - checkpoint < checkpoint - left||mid<max_int) {
+            return mid;
+        }
+        else {
+            return left;
+        }
+    }
+    else {
+        if (right - checkpoint < checkpoint - mid) {
+            return right;
+        }
+        else {
+            return mid;
+        }
+    }
 }
