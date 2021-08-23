@@ -11,6 +11,7 @@ const uint64_t max_int=4294967296;
 using namespace std;
 
 void TCPReceiver::segment_received(const TCPSegment &seg) {
+<<<<<<< HEAD
 
         // cout<<"datasize:"<<data.size()<<" sqno"<<seg.header().seqno<<"fin:"<<seg.header().fin<<" syn:"<<seg.header().syn<<endl;
 
@@ -19,11 +20,18 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         isn=wrap(1ull,seg.header().seqno);
     }
     cout<<recieve_isn<<endl;
+=======
+    if(seg.header().syn){
+        recieve_isn=true;
+        isn=seg.header().seqno;
+    }
+>>>>>>> 92ecced03831c31da95d99f90ea13faea5016d9b
     if(!recieve_isn){
         return ;
     }
   const uint64_t check_point=static_cast<uint64_t>(_reassembler.stream_out().bytes_written());
   const uint64_t win_left=check_point;
+<<<<<<< HEAD
   //syn和fin算不算做capcity里面
   const uint64_t win_right=static_cast<uint64_t>(_capacity-_reassembler.stream_out().buffer_size())+win_left-1;
   const uint64_t seg_start=seg.header().syn?0:unwrap(seg.header().seqno,isn,check_point);
@@ -37,20 +45,42 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     }
     cout<<"datasize:"<<data.size()<<" startindex:"<<seg_start<<endl;
     _reassembler.push_substring(data,seg_start,seg.header().fin);
+=======
+  const uint64_t win_right=static_cast<uint64_t>(_capacity-_reassembler.stream_out().buffer_size())+win_left;
+  const uint64_t seg_start=unwrap(WrappingInt32(seg.header().seqno),isn,check_point);
+    if(seg_start>win_right){
+        return ;
+    }
+    _reassembler.push_substring(string(seg.payload().str().data()),seg_start,seg.header().fin);
+>>>>>>> 92ecced03831c31da95d99f90ea13faea5016d9b
 
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const { 
     if(recieve_isn){
+<<<<<<< HEAD
        if(fin_off_set==_reassembler.stream_out().bytes_written()){
          return wrap(1ull+static_cast<uint64_t>(_reassembler.stream_out().bytes_written()),isn);
        }else{
            return wrap(static_cast<uint64_t>(_reassembler.stream_out().bytes_written()),isn);
        }
+=======
+     return wrap(static_cast<uint64_t>(_reassembler.stream_out().bytes_written()),isn);
+>>>>>>> 92ecced03831c31da95d99f90ea13faea5016d9b
     }
     return {};
  }
 
+<<<<<<< HEAD
 size_t TCPReceiver::window_size() const {   
    return _capacity-_reassembler.stream_out().buffer_size();
+=======
+size_t TCPReceiver::window_size() const { 
+    
+    if(_capacity-_reassembler.stream_out().buffer_size()>1u){
+        return _capacity-_reassembler.stream_out().buffer_size();
+    }else{
+        return 1u;
+    }
+>>>>>>> 92ecced03831c31da95d99f90ea13faea5016d9b
  }
