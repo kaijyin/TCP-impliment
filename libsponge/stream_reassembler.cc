@@ -29,7 +29,7 @@ void StreamReassembler::mergeTo(const node &a,node &b){
 //先重组,再提交到缓冲区
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
     
-    size_t max_idx=_cur_idx-_outputStream.buffer_size()+_capacity-1;
+    size_t max_idx=_cur_idx+_capacity-_outputStream.buffer_size()-1u;
     if(eof){_input_end_idx=index+data.size();}
     node nd(index,data);
 
@@ -56,9 +56,8 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
            it--;
        }
        while(it!=_seg_buffer.end()){
-        //如果有交集,则删除迭代器,重合部分添加在nd中,别问我为什么判断要写这么丑,直接放里面不行嘛,嗯,你可以试试
-        int a=it->end_idx-(nd.start_idx-1),b=(nd.end_idx+1)-it->start_idx;
-           if(a>=0&&b>=0){
+        //如果有交集,则删除迭代器,重合部分添加在nd中
+           if(it->end_idx+1u>=nd.start_idx&&nd.end_idx+1u>=it->start_idx){
               mergeTo(*it,nd);
               _unassembled_bytes-=it->data.size();
               it=_seg_buffer.erase(it);
@@ -74,7 +73,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     //提交到缓冲区,找seg最前的部分,判断是否能读入字节流
     if(nd.start_idx==_cur_idx){
         _outputStream.write(nd.data);
-        _cur_idx=nd.end_idx+1;
+        _cur_idx=nd.end_idx+1u;
         if(_cur_idx>=_input_end_idx)_outputStream.end_input();
     }else{
     _seg_buffer.insert(nd);
@@ -84,4 +83,4 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
 
 size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes; }
 
-bool StreamReassembler::empty() const { return _unassembled_bytes==0; }
+bool StreamReassembler::empty() const { return _unassembled_bytes==0u; }
