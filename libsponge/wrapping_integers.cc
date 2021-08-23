@@ -5,17 +5,15 @@
 // For Lab 2, please replace with a real implementation that passes the
 // automated checks run by `make check_lab2`.
 
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
-
+const uint64_t max_int=4294967296;
 using namespace std;
 
 //! Transform an "absolute" 64-bit sequence number (zero-indexed) into a WrappingInt32
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    WrappingInt32 res(static_cast<uint32_t>((static_cast<uint64_t>(isn.raw_value())+n)%max_int));
+    return res;
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +27,11 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+ 
+    //解方程(ck+isn+x)%(1<<32)=n; y=ck+isn+x;
+    //坑点,如果求得checkpoint就是最近的怎么办
+    uint64_t a=(static_cast<uint64_t>(isn.raw_value())+checkpoint)%max_int;
+    uint64_t x=(static_cast<uint64_t>(n.raw_value())+max_int-a)%max_int;
+    //可以取
+    return static_cast<uint64_t>(isn.raw_value())+checkpoint+x;
 }
