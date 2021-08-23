@@ -56,9 +56,8 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
            it--;
        }
        while(it!=_seg_buffer.end()){
-        //如果有交集,则删除迭代器,重合部分添加在nd中,别问我为什么判断要写这么丑,直接放里面不行嘛,嗯,你可以试试
-        int a=it->end_idx-(nd.start_idx-1),b=(nd.end_idx+1)-it->start_idx;
-           if(a>=0&&b>=0){
+        //如果有交集,则删除迭代器,重合部分添加在nd中
+           if(it->end_idx+1u>=nd.start_idx&&nd.end_idx+1u>=it->start_idx){
               mergeTo(*it,nd);
               _unassembled_bytes-=it->data.size();
               it=_seg_buffer.erase(it);
