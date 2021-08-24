@@ -32,8 +32,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     if(seg_start>win_right||seg_start+seg.length_in_sequence_space()<=win_left){
         return ;
     }
-    string data=string(seg.payload().str().data(),seg.payload().size());
-    // string data=string(seg.payload().str().data());,必须要加上size,因为有可能有data中可能有空字节('\0')
+    string data=string(seg.payload().str());
     if(seg.header().fin){
         fin_off_set=seg_start+data.size();
     }

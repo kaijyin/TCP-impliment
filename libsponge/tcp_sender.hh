@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <queue>
+#include <deque>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -17,6 +18,25 @@
 //! segments if the retransmission timer expires.
 class TCPSender {
   private:
+    class Timer{
+         private:
+         size_t last_flash_time{0};
+         size_t now_time{0};
+         public:
+         void flash(){
+           last_flash_time=now_time;
+         }
+         void tick(const size_t pass_time){
+           now_time+=pass_time;
+         }
+         bool time_out(const size_t RTO){
+           return now_time-last_flash_time>RTO;
+         }
+    };
+    struct seg_node{
+       TCPSegment seg={};
+       uint64_t ack_index{0};
+    };
     //! our initial sequence number, the number for our SYN.
     WrappingInt32 _isn;
 
@@ -29,9 +49,15 @@ class TCPSender {
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
+   //构造segment时的初始index,发送后就递增
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
-
+    std::deque<seg_node>seg_buffer{};
+    uint64_t ack_seqno{0};
+    uint64_t wd_right{0};
+    size_t retrans_num{0};
+    size_t RTO;
+    Timer timer={};
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
@@ -66,7 +92,7 @@ class TCPSender {
     //! \brief How many sequence numbers are occupied by segments sent but not yet acknowledged?
     //! \note count is in "sequence space," i.e. SYN and FIN each count for one byte
     //! (see TCPSegment::length_in_sequence_space())
-    size_t bytes_in_flight() const;
+    uint64_t bytes_in_flight() const;
 
     //! \brief Number of consecutive retransmissions that have occurred in a row
     unsigned int consecutive_retransmissions() const;
