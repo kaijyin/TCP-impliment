@@ -29,7 +29,7 @@ class StreamReassembler {
     ByteStream _outputStream;  //!< The reassembled in-order byte stream
     size_t _capacity=0;    //!< The maximum number of bytes
     std::set<node>_seg_buffer={};
-    size_t _input_end_idx=999999999;
+    size_t _input_end_idx=UINT32_MAX;
     size_t _cur_idx=0;
     size_t _unassembled_bytes=0;
   private:
