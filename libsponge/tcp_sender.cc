@@ -41,9 +41,9 @@ void TCPSender::fill_window() {
     }
 
     uint32_t max_size=1452;
+    //这里非负性判断是因为由于发送了一字节的零窗口探测,实际窗口大小没变
     uint32_t fill_size=static_cast<uint32_t>(wd_right_edge>_next_seqno?wd_right_edge-_next_seqno:0);
     string total_data=_stream.read(fill_size);
-    cout<<"wd_right:"<<wd_right_edge<<" next_seq:"<<_next_seqno<<" fill_size:"<<fill_size<<endl;
     bool fin_flg=_stream.input_ended()&&_stream.buffer_empty()&&total_data.size()<fill_size;
     uint32_t i=0;
     while(i+max_size<total_data.size()){
@@ -72,20 +72,14 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { 
     uint64_t ack=unwrap(ackno,_isn,_next_seqno);
-    cout<<"ack:"<<ack<<" nextseq:"<<_next_seqno<<endl;
     if(ack>_next_seqno){
         return ;
     }
     bool new_ack_flg=false;
-    while(!seg_buffer.empty()){
-        if(seg_buffer.front().ack_index>ack){
-            break;
-        }else{
-            new_ack_flg=true;
-            cur_ack_seqno=seg_buffer.front().ack_index;
-            //   cout<<"ack_seqno:"<<ack_seqno<<endl;
-            seg_buffer.pop_front();
-        }
+    while(!seg_buffer.empty()&&seg_buffer.front().ack_index<=ack){
+        new_ack_flg=true;
+        cur_ack_seqno=seg_buffer.front().ack_index;
+        seg_buffer.pop_front();
     }
     if(new_ack_flg){
        RTO=_initial_retransmission_timeout;
@@ -93,17 +87,12 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
        timer.flash();
     }
     uint64_t now_wd_right=ack+static_cast<uint64_t>(window_size);
-    cout<<"now_wd_right:"<<now_wd_right<<" wd_right:"<<wd_right_edge<<endl;
     if(now_wd_right>wd_right_edge){
         wd_right_edge=now_wd_right;
     }
-    if(window_size==0){
-        wd_right_edge++;
-    }
+    if(window_size==0)wd_right_edge++;
     fill_window();
-    if(window_size==0){
-        wd_right_edge--;
-    }
+    if(window_size==0)wd_right_edge--;
  }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
@@ -113,13 +102,15 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if(!timer.time_out(RTO)){
        return ;
     }
-    if(!seg_buffer.empty())_segments_out.push(seg_buffer.front().seg);
+    if(!seg_buffer.empty()){
+    _segments_out.push(seg_buffer.front().seg);
     uint64_t wind_size=wd_right_edge-cur_ack_seqno;
     if(wind_size!=0ull){
         retrans_num++;
         RTO=RTO*2u;
     }
     timer.flash();
+    }
  }
 
 unsigned int TCPSender::consecutive_retransmissions() const { 
