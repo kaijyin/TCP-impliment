@@ -49,7 +49,6 @@ class TCPSender {
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
-   //构造segment时的初始index,发送后就递增
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
     uint64_t cur_ack_seqno{0};
