@@ -58,7 +58,8 @@ class TCPSender {
     size_t retrans_num{0};
     size_t RTO;
     Timer timer={};
-
+    
+    bool rst=false;
     bool connect_flg=false;
     WrappingInt32 host_ack_seqno{0};
     uint16_t host_win_size{0};
