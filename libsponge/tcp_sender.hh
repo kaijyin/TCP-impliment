@@ -52,10 +52,10 @@ class TCPSender {
    //构造segment时的初始index,发送后就递增
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
-    uint64_t ack_seqno{0};
-    uint64_t fin_seqno{UINT64_MAX};
+    uint64_t cur_ack_seqno{0};
+    uint64_t fin_ack_seqno{UINT64_MAX};
     std::deque<seg_node>seg_buffer{};
-    uint64_t wd_right{0};
+    uint64_t wd_right_edge{1};
     size_t retrans_num{0};
     size_t RTO;
     Timer timer={};

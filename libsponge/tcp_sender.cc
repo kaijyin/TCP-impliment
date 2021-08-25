@@ -23,11 +23,11 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) ,RTO(retx_timeout){}
 
-uint64_t TCPSender::bytes_in_flight() const { return _next_seqno-ack_seqno; }
+uint64_t TCPSender::bytes_in_flight() const { return _next_seqno-cur_ack_seqno; }
 
 void TCPSender::fill_window() {
-    //全部数据都已近发送,无数据发送
-    if(_next_seqno>=fin_seqno){
+    //全部数据都已近发送,无数据发送,系统可能直接调用fill_window,而不只是接受到ack之后,也不可能成立,因为syn只能通过fill_window发送
+    if(_next_seqno==fin_ack_seqno){
         return ;
     }
     if(_next_seqno==0){
@@ -41,11 +41,10 @@ void TCPSender::fill_window() {
     }
 
     uint32_t max_size=1452;
-    uint32_t fill_size=static_cast<uint32_t>(wd_right+1ull>_next_seqno?wd_right+1ull-_next_seqno:0);
+    uint32_t fill_size=static_cast<uint32_t>(wd_right_edge>_next_seqno?wd_right_edge-_next_seqno:0);
     string total_data=_stream.read(fill_size);
-    cout<<"wd_right:"<<wd_right<<" next_seq:"<<_next_seqno<<" fill_size:"<<fill_size<<endl;
+    cout<<"wd_right:"<<wd_right_edge<<" next_seq:"<<_next_seqno<<" fill_size:"<<fill_size<<endl;
     bool fin_flg=_stream.input_ended()&&_stream.buffer_empty()&&total_data.size()<fill_size;
-    cout<<"datasize:"<<total_data.size()<<" fin"<<fin_flg<<endl;
     uint32_t i=0;
     while(i+max_size<total_data.size()){
         TCPSegment seg;
@@ -64,9 +63,9 @@ void TCPSender::fill_window() {
        last_seg.header().seqno=wrap(_next_seqno,_isn);
        if(i<total_data.size())last_seg.payload()=Buffer(total_data.substr(i));
        _segments_out.push(last_seg);
-       _next_seqno+=static_cast<uint64_t>(last_seg.length_in_sequence_space());
+        _next_seqno+=static_cast<uint64_t>(last_seg.length_in_sequence_space());
        seg_buffer.push_back({last_seg,_next_seqno});
-       if(fin_flg)fin_seqno=_next_seqno;
+       if(fin_flg)fin_ack_seqno=_next_seqno;
     }
 }
 //! \param ackno The remote receiver's ackno (acknowledgment number)
@@ -83,7 +82,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
             break;
         }else{
             new_ack_flg=true;
-            ack_seqno=seg_buffer.front().ack_index;
+            cur_ack_seqno=seg_buffer.front().ack_index;
             //   cout<<"ack_seqno:"<<ack_seqno<<endl;
             seg_buffer.pop_front();
         }
@@ -93,17 +92,17 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
        retrans_num=0;
        timer.flash();
     }
-    uint64_t now_wd_right=ack+static_cast<uint64_t>(window_size)-1ull;
-    cout<<"now_wd_right:"<<now_wd_right<<" wd_right:"<<wd_right<<endl;
-    if(now_wd_right>wd_right){
-        wd_right=now_wd_right;
+    uint64_t now_wd_right=ack+static_cast<uint64_t>(window_size);
+    cout<<"now_wd_right:"<<now_wd_right<<" wd_right:"<<wd_right_edge<<endl;
+    if(now_wd_right>wd_right_edge){
+        wd_right_edge=now_wd_right;
     }
     if(window_size==0){
-        wd_right++;
+        wd_right_edge++;
     }
     fill_window();
     if(window_size==0){
-        wd_right--;
+        wd_right_edge--;
     }
  }
 
@@ -115,7 +114,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
        return ;
     }
     if(!seg_buffer.empty())_segments_out.push(seg_buffer.front().seg);
-    uint64_t wind_size=wd_right+1ull-ack_seqno;
+    uint64_t wind_size=wd_right_edge-cur_ack_seqno;
     if(wind_size!=0ull){
         retrans_num++;
         RTO=RTO*2u;
