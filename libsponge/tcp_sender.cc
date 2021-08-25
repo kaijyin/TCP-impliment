@@ -42,6 +42,7 @@ void TCPSender::connect(){
 void TCPSender::send_new_seg(const TCPSegment& seg){
       _segments_out.push(seg);
       _next_seqno+=static_cast<uint64_t>(seg.length_in_sequence_space());
+      cout<<"next_seq:"<<_next_seqno<<" seglenth:"<<seg.length_in_sequence_space()<<endl;
       seg_buffer.push_back({seg,_next_seqno});
 }
 uint64_t TCPSender::bytes_in_flight() const { return _next_seqno-cur_ack_index; }
@@ -119,11 +120,18 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     //=?
     timer.tick(ms_since_last_tick);
     if(!timer.time_out(RTO)){
+        cout<<"未超时!"<<endl;
        return ;
     }
     if(!seg_buffer.empty()){
     //超时重传第一个未确认的seg
     //问题:重传需要更新win和ackno参数吗
+    TCPSegment& seg=seg_buffer.front().seg;
+    cout<<"retrans seg"<<
+    seg.header().seqno<<" ack:"<<(seg.header().ack)
+        <<" syn:"<<(seg.header().syn)
+        <<" fin:"<<(seg.header().fin)
+        <<" ackseqno:"<<seg.header().ackno<<endl;
     _segments_out.push(seg_buffer.front().seg);
     uint64_t wind_size=wd_right_edge-cur_ack_index;
     if(wind_size!=0ull){
@@ -137,8 +145,14 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 unsigned int TCPSender::consecutive_retransmissions() const { 
     return retrans_num;
  }
-
+//ack消息
 void TCPSender::send_empty_segment() {
     TCPSegment seg=get_init_seg();
-    _segments_out.push(seg);
+    //如果是syn连接的ack,需要附加syn标致,需要重传,其余ack不需要重传
+    if(_next_seqno==0ull){
+        seg.header().syn=true;
+        send_new_seg(seg);
+    }else{
+      _segments_out.push(seg);
+    }
 }
