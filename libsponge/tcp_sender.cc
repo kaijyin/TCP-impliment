@@ -45,7 +45,7 @@ void TCPSender::fill_window() {
     uint32_t fill_size=static_cast<uint32_t>(wd_right_edge>_next_seqno?wd_right_edge-_next_seqno:0);
     string total_data=_stream.read(fill_size);
     //优先发送data,data不能填满窗口的话,才发送fin
-    bool fin_flg=_stream.input_ended()&&_stream.buffer_empty()&&total_data.size()<fill_size;
+    bool fin_flg=_stream.eof()&&total_data.size()<fill_size;
     //把data按照最大字节数1452拆分为小的seg发送
     uint32_t i=0;
     while(i+max_size<total_data.size()){
