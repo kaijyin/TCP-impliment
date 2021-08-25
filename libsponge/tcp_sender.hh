@@ -30,7 +30,7 @@ class TCPSender {
            now_time+=pass_time;
          }
          bool time_out(const size_t RTO){
-           return now_time-last_flash_time>RTO;
+           return now_time-last_flash_time>=RTO;
          }
     };
     struct seg_node{
@@ -52,8 +52,9 @@ class TCPSender {
    //构造segment时的初始index,发送后就递增
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
-    std::deque<seg_node>seg_buffer{};
     uint64_t ack_seqno{0};
+    uint64_t fin_seqno{UINT64_MAX};
+    std::deque<seg_node>seg_buffer{};
     uint64_t wd_right{0};
     size_t retrans_num{0};
     size_t RTO;
@@ -70,6 +71,7 @@ class TCPSender {
     const ByteStream &stream_in() const { return _stream; }
     //!@}
 
+    void one_byte_trans();
     //! \name Methods that can cause the TCPSender to send a segment
     //!@{
 
@@ -81,7 +83,7 @@ class TCPSender {
 
     //! \brief create and send segments to fill as much of the window as possible
     void fill_window();
-
+    
     //! \brief Notifies the TCPSender of the passage of time
     void tick(const size_t ms_since_last_tick);
     //!@}
