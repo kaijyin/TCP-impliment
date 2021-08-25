@@ -76,7 +76,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
         _receiver.stream_out().error();
         _sender.stream_in().error();
     }
-    if(_receiver.stream_out().eof&&_sender.stream_in().eof()){
+    if(_receiver.stream_out().eof()&&_sender.stream_in().eof()){
       if(!_linger_after_streams_finish||now_time-last_recive_time>=10*_cfg.rt_timeout){
          close=true;
        }
