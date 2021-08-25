@@ -51,26 +51,29 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
-    uint64_t cur_ack_seqno{0};
-    uint64_t fin_ack_seqno{UINT64_MAX};
+    uint64_t cur_ack_index{0};
+    uint64_t fin_ack_index{UINT64_MAX};
     std::deque<seg_node>seg_buffer{};
     uint64_t wd_right_edge{1};
     size_t retrans_num{0};
     size_t RTO;
     Timer timer={};
+
+    bool connect_flg=false;
+    WrappingInt32 host_ack_seqno{0};
+    uint16_t host_win_size{0};
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,
               const std::optional<WrappingInt32> fixed_isn = {});
 
+    void reset_host_window(const WrappingInt32 ackno,const uint16_t window_size);
     //! \name "Input" interface for the writer
     //!@{
     ByteStream &stream_in() { return _stream; }
     const ByteStream &stream_in() const { return _stream; }
     //!@}
-
-    void one_byte_trans();
     //! \name Methods that can cause the TCPSender to send a segment
     //!@{
 

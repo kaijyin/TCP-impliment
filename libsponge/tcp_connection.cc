@@ -30,13 +30,20 @@ size_t TCPConnection::time_since_last_segment_received() const {
 
 void TCPConnection::segment_received(const TCPSegment &seg) { 
     _receiver.segment_received(seg);
+    _sender.ack_received(seg.header().ackno,seg.header().win);
     last_recive_time=now_time;
  }
 
-bool TCPConnection::active() const { return {}; }
+bool TCPConnection::active() const { 
+
+}
 
 size_t TCPConnection::write(const string &data) {
     size_t size=_sender.stream_in().write(data);
+    optional<WrappingInt32>ackno=_receiver.ackno();
+    if(ackno.has_value()){
+    _sender.reset_host_window(ackno.value(),_receiver.window_size());
+    }
     _sender.fill_window();
     return size;
 }

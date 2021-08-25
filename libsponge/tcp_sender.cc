@@ -21,11 +21,16 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) ,RTO(retx_timeout){}
 
-uint64_t TCPSender::bytes_in_flight() const { return _next_seqno-cur_ack_seqno; }
+void TCPSender::reset_host_window(WrappingInt32 ackno,uint16_t window_size){
+    connect_flg=true;
+    host_ack_seqno=ackno;
+    host_win_size=window_size;
+}
+uint64_t TCPSender::bytes_in_flight() const { return _next_seqno-cur_ack_index; }
 
 void TCPSender::fill_window() {
     //全部数据都已近发送,无数据发送
-    if(_next_seqno==fin_ack_seqno){
+    if(_next_seqno==fin_ack_index){
         return ;
     }
     //syn
@@ -51,6 +56,11 @@ void TCPSender::fill_window() {
     while(i+max_size<total_data.size()){
         TCPSegment seg;
         seg.header().seqno=wrap(_next_seqno,_isn);
+        if(connect_flg){
+        seg.header().win=host_win_size;
+        seg.header().ack=true;
+        seg.header().ackno=host_ack_seqno;
+        }
         seg.payload()=Buffer(total_data.substr(i,max_size));
         _segments_out.push(seg);
         _next_seqno+=static_cast<uint64_t>(seg.length_in_sequence_space());
@@ -62,11 +72,16 @@ void TCPSender::fill_window() {
        TCPSegment last_seg;
        if(fin_flg){last_seg.header().fin=true;}
        last_seg.header().seqno=wrap(_next_seqno,_isn);
+       if(connect_flg){
+        last_seg.header().win=host_win_size;
+        last_seg.header().ack=true;
+        last_seg.header().ackno=host_ack_seqno;
+        }
        if(i<total_data.size())last_seg.payload()=Buffer(total_data.substr(i));
        _segments_out.push(last_seg);
         _next_seqno+=static_cast<uint64_t>(last_seg.length_in_sequence_space());
        seg_buffer.push_back({last_seg,_next_seqno});
-       if(fin_flg)fin_ack_seqno=_next_seqno;
+       if(fin_flg)fin_ack_index=_next_seqno;
     }
 }
 //! \param ackno The remote receiver's ackno (acknowledgment number)
@@ -81,7 +96,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     bool new_ack_flg=false;
     while(!seg_buffer.empty()&&seg_buffer.front().ack_index<=ack){
         new_ack_flg=true;
-        cur_ack_seqno=seg_buffer.front().ack_index;
+        cur_ack_index=seg_buffer.front().ack_index;
         seg_buffer.pop_front();
     }
     //如果有新的seg被确认,刷新计时器及RTO
@@ -109,8 +124,9 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     }
     if(!seg_buffer.empty()){
     //超时重传第一个未确认的seg
+    //问题:重传需要更新win和ackno参数吗
     _segments_out.push(seg_buffer.front().seg);
-    uint64_t wind_size=wd_right_edge-cur_ack_seqno;
+    uint64_t wind_size=wd_right_edge-cur_ack_index;
     if(wind_size!=0ull){
         retrans_num++;
         RTO=RTO*2u;
@@ -126,5 +142,8 @@ unsigned int TCPSender::consecutive_retransmissions() const {
 void TCPSender::send_empty_segment() {
     TCPSegment seg;
     seg.header().seqno=wrap(_next_seqno,_isn);
+    seg.header().win=host_win_size;
+    seg.header().ack=true;
+    seg.header().ackno=host_ack_seqno;
     _segments_out.push(seg);
 }
