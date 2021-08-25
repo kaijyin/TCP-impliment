@@ -64,9 +64,7 @@ void TCPSender::fill_window() {
        last_seg.header().seqno=wrap(_next_seqno,_isn);
        if(i<total_data.size())last_seg.payload()=Buffer(total_data.substr(i));
        _segments_out.push(last_seg);
-       if(_next_seqno<fin_seqno){
-           _next_seqno+=static_cast<uint64_t>(last_seg.length_in_sequence_space());
-       }
+       _next_seqno+=static_cast<uint64_t>(last_seg.length_in_sequence_space());
        seg_buffer.push_back({last_seg,_next_seqno});
        if(fin_flg)fin_seqno=_next_seqno;
     }
