@@ -29,6 +29,7 @@ class TCPConnection {
     bool stream_both_eof();
     void check_close();
   public:
+    int id=random()%5;
     //! \name "Input" interface for the writer
     //!@{
 

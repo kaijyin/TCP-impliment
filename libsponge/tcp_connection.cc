@@ -24,6 +24,10 @@ void TCPConnection::bad_shutdown(bool send_rst) {
     }
 }
 void TCPConnection::check_close(){
+    //如果己方还有需要发送的数据没有发送就收到了对方的fin,收到自己的fin后就不需要等待
+    if(_receiver.stream_out().input_ended()&&!_sender.stream_in().eof()){
+        _linger_after_streams_finish=false;
+    }
     if(stream_both_eof()){
        if(!_linger_after_streams_finish||now_time-last_recive_time>=10*_cfg.rt_timeout){
          close=true;
@@ -31,7 +35,7 @@ void TCPConnection::check_close(){
     }
 }
 bool TCPConnection::stream_both_eof(){
-    return _receiver.stream_out().eof()&&_sender.stream_in().eof()&&_sender.bytes_in_flight()==0ull;
+    return _receiver.stream_out().input_ended()&&_sender.stream_in().eof()&&_sender.bytes_in_flight()==0ull;
 }
 void TCPConnection::set_window_info(){
     _sender.reset_host_window(_receiver.ackno(),_receiver.window_size());
@@ -39,8 +43,15 @@ void TCPConnection::set_window_info(){
 void TCPConnection::clean(){
     queue<TCPSegment>&buffer=_sender.segments_out();
     while(!buffer.empty()){
-        TCPSegment seg=buffer.front();
+    const TCPSegment& seg=buffer.front();
         _segments_out.push(seg);
+        if(seg.header().fin||seg.header().syn){
+             cerr<<"host:"<<id<<"SEND :"<<
+        "syn:"<<seg.header().syn<<
+        "fin:"<<seg.header().fin<<
+        "len:"<<seg.length_in_sequence_space()<<
+        endl;
+         }
         buffer.pop();
     }
     check_close();
@@ -63,15 +74,18 @@ size_t TCPConnection::time_since_last_segment_received() const {
 
 void TCPConnection::segment_received(const TCPSegment &seg) { 
     if(seg.header().rst){
+        cerr<<"--------------receive rst!-----------"<<endl;
         bad_shutdown(false);
         return ;
     }
     _receiver.segment_received(seg);
-    //如果己方还有需要发送的数据没有发送就收到了对方的fin,收到自己的fin后就不需要等待
-    if(_receiver.stream_out().eof()&&!_sender.stream_in().eof()){
-        _linger_after_streams_finish=false;
-    }
-
+         if(seg.header().fin||seg.header().syn){
+             cerr<<"host:"<<id<<"RECIVE :"<<
+        "syn:"<<seg.header().syn<<
+        "fin:"<<seg.header().fin<<
+        "len:"<<seg.length_in_sequence_space()<<
+        endl;
+         }
     //reciver处理结束,sender处理
     //连接成功
     if(seg.header().syn){
@@ -84,8 +98,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     //确认ack
     if(seg.length_in_sequence_space()>0u){
          _sender.send_empty_ack();
-         clean();
     }
+    clean();
     last_recive_time=now_time;
  }
 
@@ -105,6 +119,7 @@ size_t TCPConnection::write(const string &data) {
 void TCPConnection::tick(const size_t ms_since_last_tick) {
     now_time+=ms_since_last_tick;
     if(_sender.consecutive_retransmissions()>=8){
+        cerr<<"--------------RETRANS LIMIT OUT OF 8---------"<<endl;
         bad_shutdown(true);
         return ;
     }
@@ -127,8 +142,7 @@ void TCPConnection::connect() {
 TCPConnection::~TCPConnection() {
     try {
         if (active()) {
-            cerr << "Warning: Unclean shutdown of TCPConnection\n";
-
+            cerr << "Warning: Unclean shutdown of TCPConnection!\n";
             // Your code here: need to send a RST segment to the peer
            bad_shutdown(true);
         }
