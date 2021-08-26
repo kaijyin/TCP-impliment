@@ -65,7 +65,7 @@ class TCPSender {
     TCPSegment get_init_seg();
   public:
     //设置seg的win和ackno
-    void reset_host_window(const std::optional<WrappingInt32>& ackno,const uint16_t& window_size);
+    void reset_host_window(const std::optional<WrappingInt32>& ackno,const size_t& window_size);
     //标记为连接端
     void connect();
     void send_new_seg(const TCPSegment& seg);

@@ -21,11 +21,11 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) ,RTO(retx_timeout){}
 
-void TCPSender::reset_host_window(const optional<WrappingInt32>& ackno,const uint16_t& window_size){
-    if(ackno.has_value()&&host_ack_seqno.raw_value()<ackno.value().raw_value()){
+void TCPSender::reset_host_window(const optional<WrappingInt32>& ackno,const size_t& window_size){
+    if(ackno.has_value()){
         host_ack_seqno=ackno.value();
     }
-    host_win_size=window_size;
+    host_win_size=static_cast<uint16_t> (window_size>UINT16_MAX?UINT16_MAX:window_size);
 }
 //除去链接的第一个syn包没有ack,连接中传输的所有包都有ack,syn和fin需要自己标记,data需要自己加入
 TCPSegment TCPSender::get_init_seg(){
@@ -88,11 +88,11 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { 
     uint64_t ack=unwrap(ackno,_isn,_next_seqno);
-    //错误ack
-    if(ack>_next_seqno){
+    //错误ack,未发送数据ack或延迟ack
+    if(ack>_next_seqno||ack<cur_ack_index){
         return ;
     }
-    //去除已近确认的seg缓存
+    //去除多余的seg缓存
     bool new_ack_flg=false;
     while(!seg_buffer.empty()&&seg_buffer.front().ack_index<=ack){
         new_ack_flg=true;
@@ -106,6 +106,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
        timer.flash();
     }
     uint64_t now_wd_right=ack+static_cast<uint64_t>(window_size);
+    //窗口右边界只能右移
     if(now_wd_right>wd_right_edge){
         wd_right_edge=now_wd_right;
     }
@@ -118,20 +119,22 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) { 
     //=?
+    //no data,jishi ganma a !!!!
+    if(seg_buffer.empty())return;
+    // cout<<"rto:"<<RTO<<endl;
     timer.tick(ms_since_last_tick);
     if(!timer.time_out(RTO)){
-        cout<<"未超时!"<<endl;
+        // cout<<"未超时!"<<endl;
        return ;
     }
-    if(!seg_buffer.empty()){
     //超时重传第一个未确认的seg
     //问题:重传需要更新win和ackno参数吗
     TCPSegment& seg=seg_buffer.front().seg;
-    cout<<"retrans seg"<<
-    seg.header().seqno<<" ack:"<<(seg.header().ack)
-        <<" syn:"<<(seg.header().syn)
-        <<" fin:"<<(seg.header().fin)
-        <<" ackseqno:"<<seg.header().ackno<<endl;
+    // cout<<"retrans seg"<<
+    // seg.header().seqno<<" ack:"<<(seg.header().ack)
+    //     <<" syn:"<<(seg.header().syn)
+    //     <<" fin:"<<(seg.header().fin)
+    //     <<" ackseqno:"<<seg.header().ackno<<endl;
     _segments_out.push(seg_buffer.front().seg);
     uint64_t wind_size=wd_right_edge-cur_ack_index;
     if(wind_size!=0ull){
@@ -139,7 +142,6 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         RTO=RTO*2u;
     }
     timer.flash();
-    }
  }
 
 unsigned int TCPSender::consecutive_retransmissions() const { 
