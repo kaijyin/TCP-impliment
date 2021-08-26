@@ -37,6 +37,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         fin_off_set=seg_start+data.size();
     }
     _reassembler.push_substring(data,seg_start,seg.header().fin);
+    return;
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const { 

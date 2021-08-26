@@ -24,7 +24,6 @@ class TCPConnection {
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
     void bad_shutdown(bool send_rst);
-    void set_window_info();
     void clean();
     bool stream_both_eof();
     void check_close();

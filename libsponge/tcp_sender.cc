@@ -21,23 +21,11 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) ,RTO(retx_timeout){}
 
-void TCPSender::reset_host_window(const optional<WrappingInt32>& ackno,const size_t& window_size){
-    if(ackno.has_value()){
-        host_ack_seqno=ackno.value();
-    }
-    host_win_size=static_cast<uint16_t> (window_size>UINT16_MAX?UINT16_MAX:window_size);
-}
 //除去链接的第一个syn包没有ack,连接中传输的所有包都有ack,syn和fin需要自己标记,data需要自己加入
 TCPSegment TCPSender::get_init_seg(){
      TCPSegment seg;
      seg.header().seqno=wrap(_next_seqno,_isn);
-     seg.header().win=host_win_size;
-     seg.header().ack=connect_flg;
-     seg.header().ackno=host_ack_seqno;
      return seg;
-}
-void TCPSender::connect(){
-    connect_flg=true;
 }
 void TCPSender::send_new_seg(const TCPSegment& seg){
       _segments_out.push(seg);
@@ -81,6 +69,7 @@ void TCPSender::fill_window() {
        if(i<total_data.size())last_seg.payload()=Buffer(total_data.substr(i));
        send_new_seg(last_seg);
        if(fin_flg)fin_ack_index=_next_seqno;
+       return ;
     }
 }
 //! \param ackno The remote receiver's ackno (acknowledgment number)

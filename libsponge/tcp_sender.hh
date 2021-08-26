@@ -59,15 +59,11 @@ class TCPSender {
     size_t RTO;
     Timer timer={};
     
-    bool connect_flg=false;
-    WrappingInt32 host_ack_seqno{0};
-    uint16_t host_win_size{0};
+
     TCPSegment get_init_seg();
   public:
     //设置seg的win和ackno
     void reset_host_window(const std::optional<WrappingInt32>& ackno,const size_t& window_size);
-    //标记为连接端
-    void connect();
     void send_new_seg(const TCPSegment& seg);
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
