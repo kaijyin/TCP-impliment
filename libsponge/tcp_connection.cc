@@ -12,19 +12,23 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 //发送rst包不需要重传
-void TCPConnection::send_rst() {
+void TCPConnection::bad_shutdown(bool send_rst) {
+     close=true;
+    _receiver.stream_out().set_error();
+    _sender.stream_in().set_error();
+    if(send_rst){
      TCPSegment seg;
      seg.header().rst=true;
      seg.header().seqno=_sender.next_seqno();
     _segments_out.push(seg);
-     close=true;
-    _receiver.stream_out().set_error();
-    _sender.stream_in().set_error();
+    }
 }
-void TCPConnection::recive_rst(){
-    close=true;
-    _receiver.stream_out().set_error();
-    _sender.stream_in().set_error();
+void TCPConnection::check_close(){
+    if(stream_both_eof()){
+       if(!_linger_after_streams_finish||now_time-last_recive_time>=10*_cfg.rt_timeout){
+         close=true;
+       }
+    }
 }
 bool TCPConnection::stream_both_eof(){
     return _receiver.stream_out().eof()&&_sender.stream_in().eof()&&_sender.bytes_in_flight()==0ull;
@@ -39,6 +43,7 @@ void TCPConnection::clean(){
         _segments_out.push(seg);
         buffer.pop();
     }
+    check_close();
 }
 size_t TCPConnection::remaining_outbound_capacity() const {
     return _sender.stream_in().remaining_capacity();
@@ -58,7 +63,7 @@ size_t TCPConnection::time_since_last_segment_received() const {
 
 void TCPConnection::segment_received(const TCPSegment &seg) { 
     if(seg.header().rst){
-        recive_rst();
+        bad_shutdown(false);
         return ;
     }
     _receiver.segment_received(seg);
@@ -82,9 +87,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
          clean();
     }
     last_recive_time=now_time;
-    if(!_linger_after_streams_finish&&stream_both_eof()){
-        close=true;
-    }
  }
 
 bool TCPConnection::active() const { 
@@ -103,16 +105,11 @@ size_t TCPConnection::write(const string &data) {
 void TCPConnection::tick(const size_t ms_since_last_tick) {
     now_time+=ms_since_last_tick;
     if(_sender.consecutive_retransmissions()>=8){
-        send_rst();
+        bad_shutdown(true);
         return ;
     }
     _sender.tick(ms_since_last_tick);
     clean();
-    if(stream_both_eof()){
-      if(!_linger_after_streams_finish||now_time-last_recive_time>=10*_cfg.rt_timeout){
-         close=true;
-       }
-    }
 }
 
 void TCPConnection::end_input_stream() {;
@@ -133,7 +130,7 @@ TCPConnection::~TCPConnection() {
             cerr << "Warning: Unclean shutdown of TCPConnection\n";
 
             // Your code here: need to send a RST segment to the peer
-           send_rst();
+           bad_shutdown(true);
         }
     } catch (const exception &e) {
         std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
