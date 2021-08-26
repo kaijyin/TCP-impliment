@@ -42,7 +42,6 @@ void TCPSender::connect(){
 void TCPSender::send_new_seg(const TCPSegment& seg){
       _segments_out.push(seg);
       _next_seqno+=static_cast<uint64_t>(seg.length_in_sequence_space());
-      cout<<"next_seq:"<<_next_seqno<<" seglenth:"<<seg.length_in_sequence_space()<<endl;
       seg_buffer.push_back({seg,_next_seqno});
 }
 uint64_t TCPSender::bytes_in_flight() const { return _next_seqno-cur_ack_index; }
@@ -118,18 +117,14 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) { 
-    //=?
     //no data,jishi ganma a !!!!
     if(seg_buffer.empty())return;
-    // cout<<"rto:"<<RTO<<endl;
     timer.tick(ms_since_last_tick);
     if(!timer.time_out(RTO)){
-        // cout<<"未超时!"<<endl;
        return ;
     }
     //超时重传第一个未确认的seg
     //问题:重传需要更新win和ackno参数吗
-    TCPSegment& seg=seg_buffer.front().seg;
     _segments_out.push(seg_buffer.front().seg);
     uint64_t wind_size=wd_right_edge-cur_ack_index;
     if(wind_size!=0ull){

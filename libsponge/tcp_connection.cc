@@ -18,13 +18,13 @@ void TCPConnection::send_rst() {
      seg.header().seqno=_sender.next_seqno();
     _segments_out.push(seg);
      close=true;
-    _receiver.stream_out().error();
-    _sender.stream_in().error();
+    _receiver.stream_out().set_error();
+    _sender.stream_in().set_error();
 }
 void TCPConnection::recive_rst(){
     close=true;
-    _receiver.stream_out().error();
-    _sender.stream_in().error();
+    _receiver.stream_out().set_error();
+    _sender.stream_in().set_error();
 }
 bool TCPConnection::stream_both_eof(){
     return _receiver.stream_out().eof()&&_sender.stream_in().eof()&&_sender.bytes_in_flight()==0ull;
@@ -61,7 +61,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         recive_rst();
         return ;
     }
-
     _receiver.segment_received(seg);
     //如果己方还有需要发送的数据没有发送就收到了对方的fin,收到自己的fin后就不需要等待
     if(_receiver.stream_out().eof()&&!_sender.stream_in().eof()){
@@ -79,7 +78,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
     //确认ack
     if(seg.length_in_sequence_space()>0u){
-         _sender.send_empty_segment();
+         _sender.send_empty_ack();
          clean();
     }
     last_recive_time=now_time;
@@ -102,14 +101,14 @@ size_t TCPConnection::write(const string &data) {
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
-    cout<<"tick"<<endl;
     now_time+=ms_since_last_tick;
+    if(_sender.consecutive_retransmissions()>=8){
+        send_rst();
+        return ;
+    }
     _sender.tick(ms_since_last_tick);
     clean();
-    if(_sender.consecutive_retransmissions()>8){
-        send_rst();
-    }
-    if(_receiver.stream_out().eof()&&_sender.stream_in().eof()&&_sender.bytes_in_flight()==0ull){
+    if(stream_both_eof()){
       if(!_linger_after_streams_finish||now_time-last_recive_time>=10*_cfg.rt_timeout){
          close=true;
        }
