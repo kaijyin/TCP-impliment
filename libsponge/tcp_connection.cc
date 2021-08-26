@@ -36,10 +36,6 @@ void TCPConnection::clean(){
     queue<TCPSegment>&buffer=_sender.segments_out();
     while(!buffer.empty()){
         TCPSegment seg=buffer.front();
-        cout<<"id:"<<id;
-        cout<<"SEND seg segseqno:"<<seg.header().seqno<<" ack:"<<(seg.header().ack)
-        <<" syn:"<<(seg.header().syn)
-        <<" fin:"<<(seg.header().fin)<<endl;
         _segments_out.push(seg);
         buffer.pop();
     }
@@ -61,23 +57,11 @@ size_t TCPConnection::time_since_last_segment_received() const {
  }
 
 void TCPConnection::segment_received(const TCPSegment &seg) { 
-    cout<<"segment_recived"<<endl;
     if(seg.header().rst){
         recive_rst();
         return ;
     }
 
-//     cout<<"id:"<<id;
-//     cout<<"recive begin outeof:"<<(_receiver.stream_out().eof())
-//         <<" ineof:"<<(_sender.stream_in().eof())
-//    <<" byteinflight:"<<_sender.bytes_in_flight()<<endl;;
-
-
-//    cout<<"recive seg segseqno:"<<
-//         seg.header().seqno<<" ack:"<<(seg.header().ack)
-//         <<" syn:"<<(seg.header().syn)
-//         <<" fin:"<<(seg.header().fin)
-//         <<" ackseqno:"<<seg.header().ackno<<endl;
     _receiver.segment_received(seg);
     //如果己方还有需要发送的数据没有发送就收到了对方的fin,收到自己的fin后就不需要等待
     if(_receiver.stream_out().eof()&&!_sender.stream_in().eof()){
@@ -85,8 +69,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
 
     //reciver处理结束,sender处理
-
-
     //连接成功
     if(seg.header().syn){
         _sender.connect();
@@ -97,7 +79,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
     //确认ack
     if(seg.length_in_sequence_space()>0u){
-        cout<<"send_ack"<<endl;
          _sender.send_empty_segment();
          clean();
     }
@@ -105,10 +86,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if(!_linger_after_streams_finish&&stream_both_eof()){
         close=true;
     }
-    // cout<<"id:"<<id;
-    // cout<<"recive end outeof:"<<(_receiver.stream_out().eof())
-    //     <<" ineof:"<<(_sender.stream_in().eof())
-    // <<" byteinflight:"<<_sender.bytes_in_flight()<<endl;;
  }
 
 bool TCPConnection::active() const { 
@@ -130,34 +107,20 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     _sender.tick(ms_since_last_tick);
     clean();
     if(_sender.consecutive_retransmissions()>8){
-        cout<<"retrans to manny times badclose"<<endl;
         send_rst();
     }
-    // cout<<"outeof:"<<(_receiver.stream_out().eof())
-    // <<" ineof:"<<(_sender.stream_in().eof())<<endl;;
     if(_receiver.stream_out().eof()&&_sender.stream_in().eof()&&_sender.bytes_in_flight()==0ull){
-        cout<<"both eof"<<endl;
       if(!_linger_after_streams_finish||now_time-last_recive_time>=10*_cfg.rt_timeout){
-        //  cout<<"timeout close"
-        //  <<"linerfinish:"<<(_linger_after_streams_finish)<<endl;
          close=true;
        }
     }
 }
 
-void TCPConnection::end_input_stream() {
-//     cout<<"id:"<<id;
-//     cout<<"endinput begin outeof:"<<(_receiver.stream_out().eof())
-//        <<" ineof:"<<(_sender.stream_in().eof())
-//    <<" byteinflight:"<<_sender.bytes_in_flight()<<endl;;
+void TCPConnection::end_input_stream() {;
     _sender.stream_in().end_input();
     //发送fin
     _sender.fill_window();
     clean();
-//     cout<<"id:"<<id;
-//      cout<<"endinput end outeof:"<<(_receiver.stream_out().eof())
-//     <<" ineof:"<<(_sender.stream_in().eof())
-//    <<" byteinflight:"<<_sender.bytes_in_flight()<<endl;;
 }
 
 void TCPConnection::connect() {

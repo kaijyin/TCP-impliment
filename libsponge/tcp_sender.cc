@@ -130,11 +130,6 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     //超时重传第一个未确认的seg
     //问题:重传需要更新win和ackno参数吗
     TCPSegment& seg=seg_buffer.front().seg;
-    // cout<<"retrans seg"<<
-    // seg.header().seqno<<" ack:"<<(seg.header().ack)
-    //     <<" syn:"<<(seg.header().syn)
-    //     <<" fin:"<<(seg.header().fin)
-    //     <<" ackseqno:"<<seg.header().ackno<<endl;
     _segments_out.push(seg_buffer.front().seg);
     uint64_t wind_size=wd_right_edge-cur_ack_index;
     if(wind_size!=0ull){
@@ -148,7 +143,7 @@ unsigned int TCPSender::consecutive_retransmissions() const {
     return retrans_num;
  }
 //ack消息
-void TCPSender::send_empty_segment() {
+void TCPSender::send_empty_ack() {
     TCPSegment seg=get_init_seg();
     //如果是syn连接的ack,需要附加syn标致,需要重传,其余ack不需要重传
     if(_next_seqno==0ull){
