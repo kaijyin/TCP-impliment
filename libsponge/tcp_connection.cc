@@ -98,7 +98,7 @@ size_t TCPConnection::write(const string &data) {
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
     now_time+=ms_since_last_tick;
-    if(_sender.consecutive_retransmissions()>=8){
+    if(_sender.consecutive_retransmissions()>=TCPConfig::MAX_RETX_ATTEMPTS){
         bad_shutdown(true);
         return ;
     }

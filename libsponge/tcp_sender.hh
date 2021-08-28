@@ -61,10 +61,8 @@ class TCPSender {
     
 
     TCPSegment get_init_seg();
+    void send_new_seg(const TCPSegment& seg); 
   public:
-    //设置seg的win和ackno
-    void reset_host_window(const std::optional<WrappingInt32>& ackno,const size_t& window_size);
-    void send_new_seg(const TCPSegment& seg);
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,

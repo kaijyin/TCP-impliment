@@ -24,8 +24,7 @@ class TCPReceiver {
     bool recieve_isn=false;
     //isn
     WrappingInt32 isn=WrappingInt32(0u);
-    //fin位置
-    uint64_t fin_off_set=UINT64_MAX;
+
   public:
     //! \brief Construct a TCP receiver
     //!

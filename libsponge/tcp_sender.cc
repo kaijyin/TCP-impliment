@@ -21,7 +21,7 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) ,RTO(retx_timeout){}
 
-//除去链接的第一个syn包没有ack,连接中传输的所有包都有ack,syn和fin需要自己标记,data需要自己加入
+
 TCPSegment TCPSender::get_init_seg(){
      TCPSegment seg;
      seg.header().seqno=wrap(_next_seqno,_isn);
@@ -47,7 +47,7 @@ void TCPSender::fill_window() {
       return ;
     }
 
-    uint32_t max_size=1452;
+    uint32_t max_size=TCPConfig::MAX_PAYLOAD_SIZE;
     //fill_size:可发送的字节长度
     //这里非负性判断是因为可能发送了一字节的零窗口探测,实际窗口大小没变
     uint32_t fill_size=static_cast<uint32_t>(wd_right_edge>_next_seqno?wd_right_edge-_next_seqno:0);

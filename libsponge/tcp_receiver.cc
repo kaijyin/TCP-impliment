@@ -33,19 +33,16 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         return ;
     }
     string data=string(seg.payload().str());
-    if(seg.header().fin){
-        fin_off_set=seg_start+data.size();
-    }
     _reassembler.push_substring(data,seg_start,seg.header().fin);
     return;
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const { 
     if(recieve_isn){
-       if(fin_off_set==_reassembler.stream_out().bytes_written()){
-         return wrap(1ull+static_cast<uint64_t>(_reassembler.stream_out().bytes_written()),isn);
+       if(_reassembler.stream_out().input_ended()){
+         return wrap(1ull+_reassembler.stream_out().bytes_written(),isn);
        }else{
-           return wrap(static_cast<uint64_t>(_reassembler.stream_out().bytes_written()),isn);
+           return wrap(_reassembler.stream_out().bytes_written(),isn);
        }
     }
     return {};

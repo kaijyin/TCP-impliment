@@ -6,7 +6,6 @@
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
-#include <random>
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
   private:
@@ -28,7 +27,6 @@ class TCPConnection {
     bool stream_both_eof();
     void check_close();
   public:
-    int id=random()%5;
     //! \name "Input" interface for the writer
     //!@{
 
