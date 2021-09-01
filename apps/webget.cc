@@ -28,7 +28,7 @@ void get_URL(const string &host, const string &path) {
         cout<<rsp;
     }
     Socket.close();
-    // socket.wait_util_closed();
+    Socket.wait_until_closed();
 }
 
 int main(int argc, char *argv[]) {
