@@ -5,16 +5,35 @@
 
 #include <cstdint>
 #include <string>
+#include <set>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-
-    ByteStream _output;  //!< The reassembled in-order byte stream
-    size_t _capacity;    //!< The maximum number of bytes
-
+    struct node{
+      size_t start_idx=0;
+      size_t end_idx=0;
+      std::string data="";
+      node(size_t index,const std::string &DATA){
+        this->start_idx=index;
+        this->data=DATA;
+        this->end_idx=index+DATA.size()-1;
+      }
+      bool operator<(const node &b)const{
+        if(start_idx!=b.start_idx)return start_idx<b.start_idx;
+        else return end_idx<b.end_idx;
+      }
+    };
+    ByteStream _outputStream;  //!< The reassembled in-order byte stream
+    size_t _capacity=0;    //!< The maximum number of bytes
+    std::set<node>_seg_buffer={};
+    size_t _input_end_idx=UINT32_MAX;
+    size_t _cur_idx=0;
+    size_t _unassembled_bytes=0;
+  private:
+    void mergeTo(const node&a,node &b);
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
@@ -33,8 +52,8 @@ class StreamReassembler {
 
     //! \name Access the reassembled byte stream
     //!@{
-    const ByteStream &stream_out() const { return _output; }
-    ByteStream &stream_out() { return _output; }
+    const ByteStream &stream_out() const { return _outputStream; }
+    ByteStream &stream_out() { return _outputStream; }
     //!@}
 
     //! The number of bytes in the substrings stored but not yet reassembled
