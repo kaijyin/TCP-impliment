@@ -1,4 +1,4 @@
-#include "socket.hh"
+#include "tcp_sponge_socket.hh"
 #include "util.hh"
 
 #include <cstdlib>
@@ -16,9 +16,19 @@ void get_URL(const string &host, const string &path) {
     // Then you'll need to print out everything the server sends back,
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
+    FullStackSocket Socket;
+    Socket.connect(Address(host,"http"));
+    Socket.write("GET "+path+" HTTP/1.1\r\n");
+    Socket.write("Host: "+host+"\r\n");
+    Socket.write("Connection: close\r\n");
+    Socket.write("\r\n");
 
-    cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
-    cerr << "Warning: get_URL() has not been implemented yet.\n";
+    while(!Socket.eof()){
+        string rsp=Socket.read();
+        cout<<rsp;
+    }
+    Socket.close();
+    Socket.wait_until_closed();
 }
 
 int main(int argc, char *argv[]) {
