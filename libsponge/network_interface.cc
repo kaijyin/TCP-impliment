@@ -99,7 +99,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
                 if(unsend_frame.count(msg.sender_ip_address)){
                     for(auto&x:unsend_frame[msg.sender_ip_address]){
                         x.header().dst=msg.sender_ethernet_address;
-                        cerr<<"here"<<endl;
                         _frames_out.push(x);
                     }
                     unsend_frame.erase(msg.sender_ip_address);
