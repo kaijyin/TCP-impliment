@@ -50,7 +50,7 @@ class Router {
     //! datagram's destination address.
     void route_one_datagram(InternetDatagram &dgram);
     
-
+    //rout interface node
     struct RoutNode{
        uint32_t route_prefix{0};
        uint8_t prefix_length{0};
