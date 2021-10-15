@@ -1,5 +1,7 @@
 *.a
 *.o
+*.vs
+*.idea
 /build
 CMakeCache.txt
 CMakeFiles
