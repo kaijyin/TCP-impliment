@@ -1,10 +1,23 @@
----
-title: 2022-02-12未命名文件 
-tags: 新建,模板,小书匠
-category: /小书匠/日记/2022-02
-renderNumberedHeading: true
-grammar_cjkRuby: true
----
+### 计算机网络-CS144
+
+#### 介绍:
+
+ - CS144是斯坦福计算计网络的课程,配套的实验就是实现计网中的几个核心协议,包括TCP,ARP,路由转发等。
+ - 课程主页:https://cs144.github.io/ 。
+测试点也比较给力,很多小细节(,通过所有测试点后,可以对自己设计实现的TCP吞吐量进行一个测试.
+课程示例:
+![enter description here](./images/H93DWPBRL[}S_8I9D7ZF48M.png)
+我的成绩:
+![enter description here](./images/2XS]ZRBTU2%WW9`9]U3VAG2.png)
 
 
-欢迎使用 **{小书匠}(xiaoshujiang)编辑器**，您可以通过 `小书匠主按钮>模板` 里的模板管理来改变新建文章的内容。
+#### 实验内容:
+
+   - lab0:预热,用shell实现http请求。
+   - lab1:实现字节缓冲流,与上层应用传递数据的桥梁。
+   - lab2:接收端Reciver,实现流重组器,流控制等。
+   - lab3:发送端Sender,实现超时重传,ACK确认等。
+   - lab4:TCP控制器,整合lab1-lab3,实现连接管理,完成TCP接口。
+   - lab5:ARP协议。
+   - lab6:路由转发协议。
+     
