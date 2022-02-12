@@ -3,13 +3,12 @@
 #### 介绍:
 
  - CS144是斯坦福计算计网络的课程,配套的实验就是实现计网中的几个核心协议,包括TCP,ARP,路由转发等。
- - 课程主页:https://cs144.github.io/ 。
-测试点也比较给力,很多小细节(,通过所有测试点后,可以对自己设计实现的TCP吞吐量进行一个测试.
-课程示例:
-![enter description here](./images/H93DWPBRL[}S_8I9D7ZF48M.png)
-我的成绩:
-![enter description here](./images/2XS]ZRBTU2%WW9`9]U3VAG2.png)
-
+ - 课程主页:https://cs144.github.io/ 
+ - 测试点也比较给力,很多小细节(,通过所有测试点后,可以对自己设计实现的TCP吞吐量进行一个测试.
+ - 课程示例:
+![enter description here](./images/KV~4SC]Z@`2WC7M{DQMRX$3.png)
+ - 我的成绩:
+![enter description here](./images/mine.png)
 
 #### 实验内容:
 
