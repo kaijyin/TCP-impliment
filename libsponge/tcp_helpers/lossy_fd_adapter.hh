@@ -16,6 +16,7 @@ class LossyFdAdapter {
   private:
     //! Fast RNG used by _should_drop()
     std::mt19937 _rand{get_random_generator()};
+    //随机丢掉一些发送和接收的包,用于测试
 
     //! The underlying FD adapter
     AdapterT _adapter;

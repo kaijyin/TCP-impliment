@@ -172,6 +172,7 @@ static inline pair<FileDescriptor, FileDescriptor> socket_pair_helper(const int 
 }
 
 //! \param[in] datagram_interface is the underlying interface (e.g. to UDP, IP, or Ethernet)
+//! \分离后,两个socket一个用来write,一个用来read
 template <typename AdaptT>
 TCPSpongeSocket<AdaptT>::TCPSpongeSocket(AdaptT &&datagram_interface)
     : TCPSpongeSocket(socket_pair_helper(SOCK_STREAM), move(datagram_interface)) {}
@@ -225,6 +226,7 @@ void TCPSpongeSocket<AdaptT>::connect(const TCPConfig &c_tcp, const FdAdapterCon
     _tcp_loop([&] { return _tcp->state() == TCPState::State::SYN_SENT; });
     cerr << "Successfully connected to " << c_ad.destination.to_string() << ".\n";
 
+    //开启主循环
     _tcp_thread = thread(&TCPSpongeSocket::_tcp_main, this);
 }
 
@@ -292,6 +294,7 @@ void CS144TCPSocket::connect(const Address &address) {
     tcp_config.rt_timeout = 100;
 
     FdAdapterConfig multiplexer_config;
+    //LOCAL_TUN_IP_ADDRESS=169.254.144.9
     multiplexer_config.source = {"169.254.144.9", to_string(uint16_t(random_device()()))};
     multiplexer_config.destination = address;
 
@@ -306,12 +309,13 @@ EthernetAddress random_private_ethernet_address() {
     for (auto &byte : addr) {
         byte = random_device()();  // use a random local Ethernet address
     }
+    //设置为tap特有私有地址,最后两位为10
     addr.at(0) |= 0x02;  // "10" in last two binary digits marks a private Ethernet address
     addr.at(0) &= 0xfe;
 
     return addr;
 }
-
+//构造函数,打开tun连接生成fd,并设置私有MAC/Ip/nexthop
 FullStackSocket::FullStackSocket()
     : TCPOverIPv4OverEthernetSpongeSocket(TCPOverIPv4OverEthernetAdapter(TapFD("tap10"),
                                                                          random_private_ethernet_address(),
@@ -320,9 +324,11 @@ FullStackSocket::FullStackSocket()
 
 void FullStackSocket::connect(const Address &address) {
     TCPConfig tcp_config;
+    //默认1s,调整为0.1秒，不知道原因
     tcp_config.rt_timeout = 100;
 
     FdAdapterConfig multiplexer_config;
+    //设置tap虚拟IP，设置虚拟port,设置目标地址
     multiplexer_config.source = {LOCAL_TAP_IP_ADDRESS, to_string(uint16_t(random_device()()))};
     multiplexer_config.destination = address;
 

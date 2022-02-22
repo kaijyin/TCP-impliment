@@ -36,16 +36,18 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
         frame.header().type=EthernetHeader::TYPE_IPv4;
         frame.payload()=dgram.serialize();
     const uint32_t next_hop_ip = next_hop.ipv4_numeric();
-    if(ip_address_map.count(next_hop_ip)){
+    if(ip_address_map.count(next_hop_ip)){//ip-mac缓存中保留有映射关系,直接添加
         frame.header().dst=ip_address_map[next_hop_ip];
         _frames_out.push(frame);
-    }else{
+    }else{//否则发送ARP请求
        unsend_frame[next_hop_ip].push_back(frame); 
+       //5s内就发送过ARP请求,不再发送
        if(latest_arp_time.count(next_hop_ip)&&now_time-latest_arp_time[next_hop_ip]<5000){
            return ;
        }
        EthernetFrame arp_frame;
        arp_frame.header().src=_ethernet_address;
+       //设置mac目标地址为广播地址,然后发送请求
        arp_frame.header().dst=ETHERNET_BROADCAST;
        arp_frame.header().type=EthernetHeader::TYPE_ARP;
        ARPMessage arp;
@@ -70,19 +72,24 @@ bool NetworkInterface::is_equal(const EthernetAddress& a,const EthernetAddress& 
 }
 //! \param[in] frame the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
+    //既不是本机mac地址,也不是广播地址,{255,255,255,255,255,255},全为1
     if(!is_equal(frame.header().dst,_ethernet_address)&&!is_equal(frame.header().dst,ETHERNET_BROADCAST)){
         return {};
     }
     if(frame.header().type==EthernetHeader::TYPE_IPv4){
+        //网络层为IPV4
          InternetDatagram ipdata;
          if(ParseResult::NoError==ipdata.parse(frame.payload())){return ipdata;}
          else return {};
     }else{
+        //网络层为ARP
         ARPMessage msg;
         if(ParseResult::NoError==msg.parse(frame.payload())){
+            //设置映射缓存
             ip_address_map[msg.sender_ip_address]=msg.sender_ethernet_address;
             map_time[msg.sender_ip_address]=now_time;
             if(msg.opcode==ARPMessage::OPCODE_REQUEST&&msg.target_ip_address==_ip_address.ipv4_numeric()){
+                //是ARP请求包
                 EthernetFrame arp_rep;
                 arp_rep.header().src=_ethernet_address;
                 arp_rep.header().dst=msg.sender_ethernet_address;
@@ -94,9 +101,10 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
                 arp.target_ethernet_address=msg.sender_ethernet_address;
                 arp.opcode=ARPMessage::OPCODE_REPLY;
                 arp_rep.payload()=arp.serialize();
-                _frames_out.push(arp_rep);
+                _frames_out.push(arp_rep);//构造arp接受包并发送
             }else{
                 if(unsend_frame.count(msg.sender_ip_address)){
+                    //将需要发送的包的接收端ip地址设置并发送
                     for(auto&x:unsend_frame[msg.sender_ip_address]){
                         x.header().dst=msg.sender_ethernet_address;
                         _frames_out.push(x);
@@ -114,7 +122,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 void NetworkInterface::tick(const size_t ms_since_last_tick) { 
     now_time+=ms_since_last_tick;
     for(auto&x:map_time){
-        if(now_time-x.second>=30000){
+        if(now_time-x.second>=30000){//ip映射缓存超过30s后自动删除
             map_time.erase(x.first);
             ip_address_map.erase(x.first);
         }

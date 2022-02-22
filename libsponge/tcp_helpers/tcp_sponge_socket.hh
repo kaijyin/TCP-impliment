@@ -21,10 +21,12 @@ template <typename AdaptT>
 class TCPSpongeSocket : public LocalStreamSocket {
   private:
     //! Stream socket for reads and writes between owner and TCP thread
+    //应用层发送和接收数据的fd
     LocalStreamSocket _thread_data;
 
   protected:
     //! Adapter to underlying datagram socket (e.g., UDP or IP)
+    //向IP层发送和接收TCP包的fd
     AdaptT _datagram_adapter;
 
   private:
